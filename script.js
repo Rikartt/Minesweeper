@@ -128,6 +128,25 @@ function setupInput (id, width, height, gap, GRID) {
             }
         }
     });
+    document.addEventListener("pointerdown", () => updateGameState(maingrid));
+    document.addEventListener("keydown", () => updateGameState(maingrid));
+}
+function updateGameState (grid) {
+    //search part
+    let nonMineTiles = 0
+    for (let i = 0;i<grid.length;i++) {
+        for (let j=0;j<grid.length;j++) {
+            let sq = grid[i][j]
+            if (!sq.isMine && sq.covered) {
+                nonMineTiles ++
+            }
+        }
+    }
+    GameState.nonMineTilesLeft = nonMineTiles
+    console.log(GameState)
+}
+let GameState = {
+    "nonMineTilesLeft": 0
 }
 let debugMode = true
 maingrid = createEmptyGrid(10,10)
