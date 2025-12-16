@@ -116,6 +116,7 @@ function setupInput (id, width, height, gap, GRID) {
     c.addEventListener('mousemove', getMouse);
 
     c.addEventListener('mousedown', (event) => {
+        if (GameState.won || GameState.lost) {return}
         getMouse(event);
         var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
         console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
@@ -139,23 +140,34 @@ function updateGameState (grid) {
             let sq = grid[i][j]
             if (!sq.isMine && sq.covered) {
                 nonMineTiles ++
+            } else if (sq.isMine && !sq.covered) {
+                GameState.lost = true
+                break
             }
         }
     }
     GameState.nonMineTilesLeft = nonMineTiles
+    if (GameState.nonMineTilesLeft == 0) {
+        GameState.won = true
+    }
     console.log(GameState)
 }
 let GameState = {
-    "nonMineTilesLeft": 0
+    "nonMineTilesLeft": 0,
+    "won": false,
+    "lost": false
 }
 let debugMode = true
 maingrid = createEmptyGrid(10,10)
-randomizeGrid(maingrid, 0.35)
+randomizeGrid(maingrid, 0.25)
 updateGrid(maingrid)
 initCanvas("maincanvas", 500, 500, 1, maingrid)
 function drawAll() { 
     renderCanvas("maincanvas", 500, 500, 1, maingrid)
-    requestAnimationFrame(drawAll)
+    if (!GameState["won"]) {
+        requestAnimationFrame(drawAll)
+        updateGameState(maingrid)
+    }
 }
 setupInput("maincanvas", 500, 500, 1, maingrid)
 drawAll()
