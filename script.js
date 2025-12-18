@@ -21,6 +21,7 @@ function initimgs() {
     for (i=0;i<10;i++) {
         initimg(i,5,7)
     }
+    initimg('flag',16,16)
 }
 initimgs()
 function initCanvas(id, width, height, gap, GRID) {
@@ -47,6 +48,9 @@ function renderCanvas(id, width, height, gap, GRID) {
                 drawImg(numberwidth,numberheight,(i)*(gap+sqwidth)+numberoffsetx,(j)*(gap+sqheight)+numberoffsety,currentsq.mineCount,ctx)
             }
             if (currentsq.covered) {ctx.fillStyle = "gray"; ctx.fillRect(currentsq.x*(sqwidth+gap),currentsq.y*(sqheight+gap), sqwidth, sqheight);} 
+            if (currentsq.flagged) {
+                drawImg(numberwidth,numberheight,(i)*(gap+sqwidth)+numberoffsetx,(j)*(gap+sqheight)+numberoffsety,'flag',ctx)
+            }
         }
         
     }
@@ -56,7 +60,7 @@ function createEmptyGrid (width, height) {
     for (i=0;i<width;i++) {
         retgrid.push([])
         for (j=0;j<height;j++) {
-            retgrid[i].push({'covered':true,'isMine':false,'mineCount':0,'x':i,'y':j});
+            retgrid[i].push({'covered':true,'isMine':false,'mineCount':0,'x':i,'y':j,'flagged':false});
         }
     }
     return retgrid
@@ -118,9 +122,16 @@ function setupInput (id, width, height, gap, GRID) {
     c.addEventListener('mousedown', (event) => {
         if (GameState.won || GameState.lost) {return}
         getMouse(event);
-        var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
-        console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
-        GRID[tileX][tileY].covered = !GRID[tileX][tileY].covered;
+        if (event.button === 0) {
+            var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
+            console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
+            GRID[tileX][tileY].covered = !GRID[tileX][tileY].covered;
+        }
+        if (event.button === 2) {
+            var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
+            console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
+            GRID[tileX][tileY].flagged = !GRID[tileX][tileY].flagged;
+        }
     });
     document.addEventListener('keypress', (event) => {
         if (debugMode) {
@@ -159,7 +170,7 @@ let GameState = {
 }
 let debugMode = true
 maingrid = createEmptyGrid(10,10)
-randomizeGrid(maingrid, 0.25)
+randomizeGrid(maingrid, 0.1235)
 updateGrid(maingrid)
 initCanvas("maincanvas", 500, 500, 1, maingrid)
 function drawAll() { 
