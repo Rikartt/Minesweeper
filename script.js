@@ -133,6 +133,9 @@ function setupInput (id, width, height, gap, GRID) {
             GRID[tileX][tileY].flagged = !GRID[tileX][tileY].flagged;
         }
     });
+    c.addEventListener("contextmenu", (e) => {
+        e.preventDefault(); //prevents context menu from popping up when right clicking
+    });
     document.addEventListener('keypress', (event) => {
         if (debugMode) {
             if (event.key == 'u') {
