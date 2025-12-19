@@ -18,7 +18,7 @@ function rangeAround(cy, variable) {
   );
 }
 const PercentOfMines = 0.2
-const startingareasize = 2
+const startingareasize = 3
 function drawImg(width, height, x, y, img, ctx) {
     let image = imgcache[img]
     if (image.complete) {
@@ -40,7 +40,7 @@ initimgs()
 function initCanvas(id, width, height, gap, GRID) {
     var c = document.getElementById(id);
     c.width = width+gap*GRID.length
-    c.height = height+GRID[0].length
+    c.height = height+gap*GRID[0].length
     var ctx = c.getContext("2d");
     var sqwidth = width / GRID.length; var sqheight = height / GRID[0].length
     ctx.imageSmoothingEnabled = false;
@@ -50,11 +50,15 @@ function renderCanvas(id, width, height, gap, GRID) {
     var ctx = c.getContext("2d");
     var sqwidth = width / GRID.length; var sqheight = height / GRID[0].length
     ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "black"
+    ctx.fillRect(0,0, (gap+sqwidth)*(GRID.length)-gap, (gap+sqheight)*GRID[0].length-gap);
     for (i=0;i<GRID.length;i++) {
         for (j=0;j<GRID[i].length;j++) {
             var currentsq = GRID[i][j];
-            if (currentsq.isMine) {ctx.fillStyle = "red"}
-            else {ctx.fillStyle = "green"}
+            if (!currentsq.covered) {
+                if (currentsq.isMine) {ctx.fillStyle = "red"}
+                else {ctx.fillStyle = "green"}
+            } else {ctx.fillStyle = "black"}
             let numberwidth = 0.61803398875*sqheight*5/7; let numberheight = 0.61803398875*sqheight; let numberoffsetx = (sqwidth - numberwidth)/2; let numberoffsety = (sqheight - numberheight)/2
             ctx.fillRect(currentsq.x*(sqwidth+gap),currentsq.y*(sqheight+gap), sqwidth, sqheight);
             if (currentsq.mineCount) {
@@ -79,7 +83,7 @@ function createEmptyGrid (width, height) {
     return retgrid
 }
 function randomizeGrid (grid, minePercent) {
-    var mineCount = Math.floor(grid.length * grid[0].length * minePercent) - startingareasize*startingareasize
+    var mineCount = Math.floor((grid.length-startingareasize) * (grid[0].length-startingareasize) * minePercent);
     for (let m=0;m<mineCount;) {
         var i = Math.floor(Math.random()*grid.length);var j = Math.floor(Math.random()*grid[0].length); var sq = {x: i, y: j};
         if (grid[sq.x][sq.y].isMine == null) {
@@ -117,13 +121,13 @@ function findUncoveredCount (grid, cx, cy) { //Finds uncovered neighbor count fo
     if (grid[cx][cy].covered) {return null} else { //Safeguard to prevent this being used on covered squares.
         for (let i=0;i<xlist.length;i++) {
             for (let j=0;j<ylist.length;j++) {
-                if (!grid[xlist[i]][ylist[j]].covered) {
+                if (grid[xlist[i]][ylist[j]].covered) {
                     count++
                 }
             }
         }
     }
-    return count
+    return 8-count
 }
 function firstClick (grid, cx, cy) { //what happens on the first click at the tile (cx, cy)
     let xlist = rangeAround(cx,Math.floor((startingareasize-1)/2)).filter((item) => grid.length>item && item>-1)
@@ -135,6 +139,7 @@ function firstClick (grid, cx, cy) { //what happens on the first click at the ti
     }
     randomizeGrid(maingrid, PercentOfMines)
     updateGrid(maingrid)
+    GameState.totalMines = Math.floor((maingrid.length-startingareasize) * (maingrid[0].length-startingareasize) * PercentOfMines)
     GameState.startTime = Date.now()
     GameState.hadfirstclick = true
 }
@@ -148,7 +153,7 @@ function toggleCover(grid) { //debugging that uncovers all covered and covers al
 function setupInput (id, width, height, gap, GRID) {
     var c = document.getElementById(id);
     c.width = width+gap*GRID.length
-    c.height = height+GRID[0].length
+    c.height = height+gap*GRID[0].length
     var sqwidth = c.width / (GRID.length); var sqheight = c.height / (GRID[0].length)
     console.log(c.width, "height", c.height)
     var ctx = c.getContext("2d");
@@ -166,6 +171,7 @@ function setupInput (id, width, height, gap, GRID) {
         var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
         if (event.button === 0) {
             console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
+            if (GRID[tileX][tileY].flagged) {return}
             if (!GameState.hadfirstclick) {firstClick(GRID,tileX,tileY)}
             GRID[tileX][tileY].covered = false;
             GRID[tileX][tileY].uncoveredNeighbors = findUncoveredCount(GRID, tileX,tileY)
@@ -173,6 +179,7 @@ function setupInput (id, width, height, gap, GRID) {
             console.log(GRID[tileX][tileY])
         if (event.button === 2) {
             console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
+            if (!GRID[tileX][tileY].covered) {return}
             GRID[tileX][tileY].flagged = !GRID[tileX][tileY].flagged;
         }
     });
@@ -192,6 +199,7 @@ function setupInput (id, width, height, gap, GRID) {
 function updateGameState (grid) {
     //search part
     let nonMineTiles = 0
+    let flagcount = 0
     for (let i = 0;i<grid.length;i++) {
         for (let j=0;j<grid.length;j++) {
             let sq = grid[i][j]
@@ -201,8 +209,11 @@ function updateGameState (grid) {
                 GameState.lost = true
                 break
             }
+            if (sq.flagged) {
+                flagcount ++
+            }
             if (sq.mineCount == 0 && !sq.covered && sq.uncoveredNeighbors<8) { //logic for when a 0-square is uncovered
-                console.log("0square uncovered!")
+                console.log("0square uncovered!", sq.x, sq.y)
                 let xlist = [sq.x-1, sq.x, sq.x+1].filter((item) => grid.length>item && item>-1)
                 let ylist = [sq.y-1, sq.y, sq.y+1].filter((item) => grid[0].length>item && item>-1)
                 for (let q=0;q<xlist.length;q++) {
@@ -210,19 +221,30 @@ function updateGameState (grid) {
                         grid[xlist[q]][ylist[p]].covered = false;
                     }
                 }
+                sq.uncoveredNeighbors = findUncoveredCount(grid,sq.x,sq.y)
+                console.log(findUncoveredCount(grid,sq.x,sq.y))
             }
         }
     }
+    GameState.flagcount = flagcount
     GameState.nonMineTilesLeft = nonMineTiles
     if (GameState.nonMineTilesLeft == 0) {
         GameState.won = true
     }
     if (GameState.won || GameState.lost) {GameState.clicklock = true;console.log("time:",renderTime(GameState.elapsedTime))}
     if (GameState.won) {console.log("You Win!")} else if (GameState.lost) {console.log("You Lose!")} else {
-        GameState.elapsedTime = Date.now()-GameState.startTime;
+        if (GameState.hadfirstclick) {GameState.elapsedTime = Date.now()-GameState.startTime;}
     }
     //console.log(GameState)
 }
+function renderHUD () {
+    timer = document.getElementById("timer")
+    timer.innerHTML = renderTime(GameState.elapsedTime)
+    flagcounter = document.getElementById("flagcount")
+    flagcounter.innerHTML = GameState.totalMines - GameState.flagcount
+}
+let debugMode = true
+const globalgap = 2
 let GameState = {
     "nonMineTilesLeft": 0,
     "won": false,
@@ -230,17 +252,19 @@ let GameState = {
     "clicklock": false,
     "hadfirstclick": false,
     "startTime": 0,
-    "elapsedTime": 0
+    "elapsedTime": 0,
+    "totalMines": 0,
+    "flagcount": 0
 }
-let debugMode = true
-maingrid = createEmptyGrid(7,7)
-initCanvas("maincanvas", 500, 500, 1, maingrid)
+maingrid = createEmptyGrid(20,20)
+initCanvas("maincanvas", 500, 500, globalgap, maingrid)
 function drawAll() { 
-    renderCanvas("maincanvas", 500, 500, 1, maingrid)
+    renderCanvas("maincanvas", 500, 500, globalgap, maingrid)
+    renderHUD()
     if (!GameState.won && !GameState.lost) {
         requestAnimationFrame(drawAll)
         updateGameState(maingrid)
     }
 }
-setupInput("maincanvas", 500, 500, 1, maingrid)
+setupInput("maincanvas", 500, 500, globalgap, maingrid)
 drawAll()
