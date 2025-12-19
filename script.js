@@ -256,15 +256,16 @@ let GameState = {
     "totalMines": 0,
     "flagcount": 0
 }
-maingrid = createEmptyGrid(20,20)
-initCanvas("maincanvas", 500, 500, globalgap, maingrid)
+let gridwidth = 20; let gridheight = 20; let canvaswidth = 500; let canvasheight = 500;
+maingrid = createEmptyGrid(gridwidth,gridheight)
+initCanvas("maincanvas", canvaswidth, canvasheight, globalgap, maingrid)
 function drawAll() { 
-    renderCanvas("maincanvas", 500, 500, globalgap, maingrid)
+    renderCanvas("maincanvas", canvaswidth, canvasheight, globalgap, maingrid)
     renderHUD()
     if (!GameState.won && !GameState.lost) {
         requestAnimationFrame(drawAll)
         updateGameState(maingrid)
     }
 }
-setupInput("maincanvas", 500, 500, globalgap, maingrid)
+setupInput("maincanvas", canvaswidth, canvasheight, globalgap, maingrid)
 drawAll()
