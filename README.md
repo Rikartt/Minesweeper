@@ -10,6 +10,6 @@ Starting point: Grid mechanics and controls are pretty much finalized.
         -   [X] Player should be able to place flags where he or she thinks there's a mine to be uncovered. This on rght click
         -   [X] When uncovering a "zero tile", so a tile without any surrounding minetiles, uncover all surrounding tiles, and if they're zeros, uncover their surrounding tiles as well.
         -   [X] Uncovered tiles shouldn't be able to be covered again
--   [ ] Rewrite game generation logic so that mines are placed after the first click so that a player can't uncover a mine as a first tile.
+-   [X] Rewrite game generation logic so that mines are placed after the first click so that a player can't uncover a mine as a first tile.
 -   [ ] Make a timer
 -   [ ] Make a win/loss animation or screen.

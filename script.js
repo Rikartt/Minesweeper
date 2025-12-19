@@ -6,6 +6,19 @@ function initimg (name,width,height) {
                 imgcache[name].src = `sprites/${name}.png`;
     }
 }
+function renderTime (ms) {
+    let minutes = Math.floor(ms/60000)
+    let seconds = Math.floor((ms-minutes*60000)/1000)
+    return `${minutes}:${seconds}`
+}
+function rangeAround(cy, variable) {
+  return Array.from(
+    { length: 2 * variable + 1 },
+    (_, i) => cy - variable + i
+  );
+}
+const PercentOfMines = 0.2
+const startingareasize = 2
 function drawImg(width, height, x, y, img, ctx) {
     let image = imgcache[img]
     if (image.complete) {
@@ -60,16 +73,16 @@ function createEmptyGrid (width, height) {
     for (i=0;i<width;i++) {
         retgrid.push([])
         for (j=0;j<height;j++) {
-            retgrid[i].push({'covered':true,'isMine':false,'mineCount':0,'uncoveredNeighbors':0,'x':i,'y':j,'flagged':false});
+            retgrid[i].push({'covered':true,'isMine':null,'mineCount':0,'uncoveredNeighbors':0,'x':i,'y':j,'flagged':false});
         }
     }
     return retgrid
 }
 function randomizeGrid (grid, minePercent) {
-    var mineCount = Math.floor(grid.length * grid[0].length * minePercent)
+    var mineCount = Math.floor(grid.length * grid[0].length * minePercent) - startingareasize*startingareasize
     for (let m=0;m<mineCount;) {
         var i = Math.floor(Math.random()*grid.length);var j = Math.floor(Math.random()*grid[0].length); var sq = {x: i, y: j};
-        if (!grid[sq.x][sq.y].isMine) {
+        if (grid[sq.x][sq.y].isMine == null) {
             grid[sq.x][sq.y].isMine = true
             m += 1
         }
@@ -113,14 +126,24 @@ function findUncoveredCount (grid, cx, cy) { //Finds uncovered neighbor count fo
     return count
 }
 function firstClick (grid, cx, cy) { //what happens on the first click at the tile (cx, cy)
-
+    let xlist = rangeAround(cx,Math.floor((startingareasize-1)/2)).filter((item) => grid.length>item && item>-1)
+    let ylist = rangeAround(cy,Math.floor((startingareasize-1)/2)).filter((item) => grid[0].length>item && item>-1)
+    for (let row of xlist) {
+        for (let col of ylist) {
+            grid[row][col].isMine = false
+        }
+    }
+    randomizeGrid(maingrid, PercentOfMines)
+    updateGrid(maingrid)
+    GameState.startTime = Date.now()
+    GameState.hadfirstclick = true
 }
 function toggleCover(grid) { //debugging that uncovers all covered and covers all uncovered
     for (let row of grid) {
         for (let obj of row) {
             obj.covered = !obj.covered;
         }
-    }
+    }renderTime(GameState.elapsedTime)
 }
 function setupInput (id, width, height, gap, GRID) {
     var c = document.getElementById(id);
@@ -140,15 +163,15 @@ function setupInput (id, width, height, gap, GRID) {
     c.addEventListener('mousedown', (event) => {
         if (GameState.clicklock) {return}
         getMouse(event);
+        var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
         if (event.button === 0) {
-            var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
             console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
+            if (!GameState.hadfirstclick) {firstClick(GRID,tileX,tileY)}
             GRID[tileX][tileY].covered = false;
             GRID[tileX][tileY].uncoveredNeighbors = findUncoveredCount(GRID, tileX,tileY)
-            console.log(grid[tileX][tileY])
-        }
+            }
+            console.log(GRID[tileX][tileY])
         if (event.button === 2) {
-            var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
             console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
             GRID[tileX][tileY].flagged = !GRID[tileX][tileY].flagged;
         }
@@ -194,25 +217,27 @@ function updateGameState (grid) {
     if (GameState.nonMineTilesLeft == 0) {
         GameState.won = true
     }
-    if (GameState.won || GameState.lost) {GameState.clicklock = true}
-    if (GameState.won) {console.log("You Win!")}
-    if (GameState.lost) {console.log("You Lose!")}
+    if (GameState.won || GameState.lost) {GameState.clicklock = true;console.log("time:",renderTime(GameState.elapsedTime))}
+    if (GameState.won) {console.log("You Win!")} else if (GameState.lost) {console.log("You Lose!")} else {
+        GameState.elapsedTime = Date.now()-GameState.startTime;
+    }
     //console.log(GameState)
 }
 let GameState = {
     "nonMineTilesLeft": 0,
     "won": false,
     "lost": false,
-    "clicklock": false
+    "clicklock": false,
+    "hadfirstclick": false,
+    "startTime": 0,
+    "elapsedTime": 0
 }
 let debugMode = true
-maingrid = createEmptyGrid(10,10)
-randomizeGrid(maingrid, 0.1235)
-updateGrid(maingrid)
+maingrid = createEmptyGrid(7,7)
 initCanvas("maincanvas", 500, 500, 1, maingrid)
 function drawAll() { 
     renderCanvas("maincanvas", 500, 500, 1, maingrid)
-    if (!GameState["won"]) {
+    if (!GameState.won && !GameState.lost) {
         requestAnimationFrame(drawAll)
         updateGameState(maingrid)
     }
