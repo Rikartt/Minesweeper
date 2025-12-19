@@ -60,7 +60,7 @@ function createEmptyGrid (width, height) {
     for (i=0;i<width;i++) {
         retgrid.push([])
         for (j=0;j<height;j++) {
-            retgrid[i].push({'covered':true,'isMine':false,'mineCount':0,'x':i,'y':j,'flagged':false});
+            retgrid[i].push({'covered':true,'isMine':false,'mineCount':0,'uncoveredNeighbors':0,'x':i,'y':j,'flagged':false});
         }
     }
     return retgrid
@@ -97,6 +97,24 @@ function findMineCount (grid, cx, cy) {
     }
     return count
 }
+function findUncoveredCount (grid, cx, cy) { //Finds uncovered neighbor count for square at cx and cy, IMPORTANT: ONLY RUN ON UNCOVERED SQUARES FOR PERFORMANCE. MAYBE EVEN ONLY ZEROSQUARES.
+    let xlist = [cx-1, cx, cx+1].filter((item) => grid.length>item && item>-1)
+    let ylist = [cy-1, cy, cy+1].filter((item) => grid[0].length>item && item>-1)
+    let count = 0
+    if (grid[cx][cy].covered) {return null} else { //Safeguard to prevent this being used on covered squares.
+        for (let i=0;i<xlist.length;i++) {
+            for (let j=0;j<ylist.length;j++) {
+                if (!grid[xlist[i]][ylist[j]].covered) {
+                    count++
+                }
+            }
+        }
+    }
+    return count
+}
+function firstClick (grid, cx, cy) { //what happens on the first click at the tile (cx, cy)
+
+}
 function toggleCover(grid) { //debugging that uncovers all covered and covers all uncovered
     for (let row of grid) {
         for (let obj of row) {
@@ -120,12 +138,14 @@ function setupInput (id, width, height, gap, GRID) {
     c.addEventListener('mousemove', getMouse);
 
     c.addEventListener('mousedown', (event) => {
-        if (GameState.won || GameState.lost) {return}
+        if (GameState.clicklock) {return}
         getMouse(event);
         if (event.button === 0) {
             var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
             console.log(mouseX,";",mouseY, "-",tileX,";",tileY)
-            GRID[tileX][tileY].covered = !GRID[tileX][tileY].covered;
+            GRID[tileX][tileY].covered = false;
+            GRID[tileX][tileY].uncoveredNeighbors = findUncoveredCount(GRID, tileX,tileY)
+            console.log(grid[tileX][tileY])
         }
         if (event.button === 2) {
             var tileX = Math.floor(mouseX / sqwidth); var tileY = Math.floor(mouseY / sqheight);
@@ -158,18 +178,32 @@ function updateGameState (grid) {
                 GameState.lost = true
                 break
             }
+            if (sq.mineCount == 0 && !sq.covered && sq.uncoveredNeighbors<8) { //logic for when a 0-square is uncovered
+                console.log("0square uncovered!")
+                let xlist = [sq.x-1, sq.x, sq.x+1].filter((item) => grid.length>item && item>-1)
+                let ylist = [sq.y-1, sq.y, sq.y+1].filter((item) => grid[0].length>item && item>-1)
+                for (let q=0;q<xlist.length;q++) {
+                    for (let p=0;p<ylist.length;p++) {
+                        grid[xlist[q]][ylist[p]].covered = false;
+                    }
+                }
+            }
         }
     }
     GameState.nonMineTilesLeft = nonMineTiles
     if (GameState.nonMineTilesLeft == 0) {
         GameState.won = true
     }
-    console.log(GameState)
+    if (GameState.won || GameState.lost) {GameState.clicklock = true}
+    if (GameState.won) {console.log("You Win!")}
+    if (GameState.lost) {console.log("You Lose!")}
+    //console.log(GameState)
 }
 let GameState = {
     "nonMineTilesLeft": 0,
     "won": false,
-    "lost": false
+    "lost": false,
+    "clicklock": false
 }
 let debugMode = true
 maingrid = createEmptyGrid(10,10)
